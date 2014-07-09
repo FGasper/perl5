@@ -226,6 +226,12 @@
  */
 /*#define HAS_LOCALECONV	/ **/
 
+/* HAS_LC_MONETARY_2008:
+ *	This symbol, if defined, indicates that the localeconv routine is
+ *	available and has the additional members added in POSIX 1003.1-2008.
+ */
+/*#define HAS_LC_MONETARY_2008	/ **/
+
 /* HAS_LOCKF:
  *	This symbol, if defined, indicates that the lockf routine is
  *	available to do file locking.
@@ -4851,6 +4857,6 @@
 #endif
 
 /* Generated from:
- * 8d61fec9ecb01eecea08d68eef7ee547e6ec951a411600e1e178c1270ba17d89 config_h.SH
- * 6039ef141e931b6582a919f2049d2e4d68a5f977e2cf27b898966e83d5f3ed62 uconfig.sh
+ * 427ffcb93d243c38d9082773638cb0c93ae3214110d6d4e9308fd3d7766ec685 config_h.SH
+ * a9303ec455cf76b93b51768678093185511c4037ee4dfd70b0e5794b5788fafe uconfig.sh
  * ex: set ro: */
