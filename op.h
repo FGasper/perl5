@@ -124,9 +124,10 @@ Deprecated.  Use C<GIMME_V> instead.
 				/*  On OP_SMARTMATCH, an implicit smartmatch */
 				/*  On OP_ANONHASH and OP_ANONLIST, create a
 				    reference to the new anon hash or array */
-				/*  On OP_HELEM and OP_HSLICE, localization will be followed
-				    by assignment, so do not wipe the target if it is special
-				    (e.g. a glob or a magic SV) */
+				/*  On OP_HELEM, OP_MULTIDEREF and OP_HSLICE,
+                                    localization will be followed by assignment,
+                                    so do not wipe the target if it is special
+                                    (e.g. a glob or a magic SV) */
 				/*  On OP_MATCH, OP_SUBST & OP_TRANS, the
 				    operand of a logical or conditional
 				    that was optimised away, so it should
@@ -240,16 +241,19 @@ is no conversion of op type.
 #define OPpENTERSUB_NOPAREN	128	/* bare sub call (without parens) */
 #define OPpMAY_RETURN_CONSTANT	1	/* If a constant sub, return the constant */
 
+  /* OP_MULTIDEREF only */
+#define OPpMULTIDEREF_EXISTS    4       /* the op does an exists() */
+
   /* OP_GV only */
 #define OPpEARLY_CV		32	/* foo() called before sub foo was parsed */
-  /* OP_?ELEM only */
+  /* OP_?ELEM, OP_MULTIDEREF only */
 #define OPpLVAL_DEFER		16	/* Defer creation of array/hash elem */
   /* OP_RV2[AH]V OP_[AH]SLICE */
 #define OPpSLICEWARNING		4	/* warn about @hash{$scalar} */
   /* OP_RV2[SAH]V, OP_GVSV, OP_ENTERITER only */
 #define OPpOUR_INTRO		16	/* Variable was in an our() */
   /* OP_RV2[AGH]V, OP_PAD[AH]V, OP_[AH]ELEM, OP_[AH]SLICE OP_AV2ARYLEN,
-     OP_R?KEYS, OP_SUBSTR, OP_POS, OP_VEC */
+     OP_R?KEYS, OP_SUBSTR, OP_POS, OP_VEC, OP_MULTIDEREF */
 #define OPpMAYBE_LVSUB		8	/* We might be an lvalue to return */
   /* OP_RV2HV and OP_PADHV */
 #define OPpTRUEBOOL		32	/* %hash in (%hash || $foo) in
@@ -1090,6 +1094,66 @@ Sets the sibling of o to sib
 #  define OP_CHECK_MUTEX_UNLOCK		NOOP
 #  define OP_CHECK_MUTEX_TERM		NOOP
 #endif
+
+
+
+/* Stuff for OP_MULTDEREF/pp_multideref. */
+
+enum {
+    /* actions */
+
+    MDEREF_reload = 0,  /* Load another word of actions/flag bits. Must be 0 */
+
+    MDEREF_AV_pop_rv2av_aelem,
+    MDEREF_AV_gvsv_vivify_rv2av_aelem,
+    MDEREF_AV_padsv_vivify_rv2av_aelem,
+    MDEREF_AV_vivify_rv2av_aelem,
+    MDEREF_AV_rv2av_aelem,
+    MDEREF_AV_padav_aelem,
+    MDEREF_AV_gvav_aelem,
+
+    MDEREF_HV_pop_rv2hv_helem,
+    MDEREF_HV_gvsv_vivify_rv2hv_helem,
+    MDEREF_HV_padsv_vivify_rv2hv_helem,
+    MDEREF_HV_vivify_rv2hv_helem,
+    MDEREF_HV_rv2hv_helem,
+    MDEREF_HV_padhv_helem,
+    MDEREF_HV_gvhv_helem,
+
+    MDEREF_ACTION_MASK  =   0xf,
+
+    /* key / index type */
+
+    MDEREF_INDEX_none   =  0x00, /* run external ops to generate index */
+    MDEREF_INDEX_const  =  0x10, /* index is const SvPV / UV */
+    MDEREF_INDEX_padsv  =  0x20, /* index is lexical var */
+    MDEREF_INDEX_gvsv   =  0x30, /* index is GV */
+
+    MDEREF_INDEX_MASK   =  0x30,
+
+    /* bit flags */
+
+    MDEREF_FLAG_last    =  0x40, /* the last [ah]elem; PL_op flags apply */
+
+    MDEREF_MASK         =  0x7F,
+    MDEREF_SHIFT        =     7,
+};
+
+typedef union  {
+    UV        actions;
+    PADOFFSET pad_offset;
+    SV        *sv;
+    IV        iv;
+    UV        uv;
+} MDEREF_item;
+
+#ifdef USE_ITHREADS
+#  define MDEREF_item_sv(items) PAD_SVl((items)->pad_offset);
+#else
+#  define MDEREF_item_sv(items) ((items)->sv);
+#endif
+
+
 
 /*
  * Local variables:

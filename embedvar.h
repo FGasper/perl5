@@ -202,6 +202,7 @@
 #define PL_minus_p		(vTHX->Iminus_p)
 #define PL_modcount		(vTHX->Imodcount)
 #define PL_modglobal		(vTHX->Imodglobal)
+#define PL_multideref_count	(vTHX->Imultideref_count)
 #define PL_my_cxt_keys		(vTHX->Imy_cxt_keys)
 #define PL_my_cxt_list		(vTHX->Imy_cxt_list)
 #define PL_my_cxt_size		(vTHX->Imy_cxt_size)

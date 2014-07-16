@@ -813,6 +813,12 @@ const struct flag_to_name op_leave_names[] = {
     {OPpLVALUE,	    ",LVALUE"}
 };
 
+const struct flag_to_name op_multideref_names[] = {
+    {OPpMULTIDEREF_EXISTS, ",EXISTS"},
+    {OPpMAYBE_LVSUB,	   ",MAYBE_LVSUB"},
+    {OPpLVAL_DEFER,	   ",LVAL_DEFER"}
+};
+
 #define OP_PRIVATE_ONCE(op, flag, name) \
     const struct flag_to_name CAT2(op, _names)[] = {	\
 	{(flag), (name)} \
@@ -859,7 +865,8 @@ const struct op_private_by_op op_private_names[] = {
     {OP_SPLIT, C_ARRAY_LENGTH(op_split_names), op_split_names },
     {OP_DBSTATE, C_ARRAY_LENGTH(op_dbstate_names), op_dbstate_names },
     {OP_NEXTSTATE, C_ARRAY_LENGTH(op_dbstate_names), op_dbstate_names },
-    {OP_BACKTICK, C_ARRAY_LENGTH(op_open_names), op_open_names }
+    {OP_BACKTICK, C_ARRAY_LENGTH(op_open_names), op_open_names },
+    {OP_MULTIDEREF, C_ARRAY_LENGTH(op_multideref_names), op_multideref_names }
 };
 
 static bool
@@ -1081,6 +1088,18 @@ Perl_do_op_dump(pTHX_ I32 level, PerlIO *file, const OP *o)
 	}
 #endif
 	break;
+
+    case OP_MULTIDEREF:
+    {
+        MDEREF_item *items = (MDEREF_item*)(cPVOPo->op_pv);
+        UV i, count = items[-1].uv;
+
+	Perl_dump_indent(aTHX_ level, file, "ARGS = \n");
+        for (i=0; i < count;  i++)
+            Perl_dump_indent(aTHX_ level+1, file, "%"UVuf" => 0x%"UVxf"\n",
+                                    i, items[i].uv);
+    }
+
     case OP_CONST:
     case OP_HINTSEVAL:
     case OP_METHOD_NAMED:
@@ -2366,11 +2385,57 @@ Perl_runops_debug(pTHX)
     return 0;
 }
 
+
+/* print the names of the n lexical vars starting at pad offset off */
+
+void
+S_deb_padvar(pTHX_ PADOFFSET off, int n, bool paren)
+{
+    SV *sv;
+    CV * const cv = deb_curcv(cxstack_ix);
+    PAD *comppad = NULL;
+    int i;
+
+    if (cv) {
+        PADLIST * const padlist = CvPADLIST(cv);
+        comppad = *PadlistARRAY(padlist);
+    }
+    if (paren)
+        PerlIO_printf(Perl_debug_log, "(");
+    for (i = 0; i < n; i++) {
+        if (comppad &&
+                (sv = *av_fetch(comppad, off + i, FALSE)))
+            PerlIO_printf(Perl_debug_log, "%s", SvPV_nolen_const(sv));
+        else
+            PerlIO_printf(Perl_debug_log, "[%"UVuf"]",
+                    (UV)(off+i));
+        if (i < n - 1)
+            PerlIO_printf(Perl_debug_log, ",");
+    }
+    if (paren)
+        PerlIO_printf(Perl_debug_log, ")");
+}
+
+
+void
+S_print_gv_name(pTHX_ GV *gv, char sigil)
+{
+    SV * sv;
+    if (!gv) {
+        PerlIO_puts(Perl_debug_log, "<NULLGV>");
+        return;
+    }
+    sv = newSV(0);
+    gv_fullname4(sv, gv, NULL, FALSE);
+    PerlIO_putc(Perl_debug_log, sigil);
+    PerlIO_puts(Perl_debug_log, SvPV_nolen_const(sv));
+    SvREFCNT_dec_NN(sv);
+}
+
+
 I32
 Perl_debop(pTHX_ const OP *o)
 {
-    int count;
-
     PERL_ARGS_ASSERT_DEBOP;
 
     if (CopSTASH_eq(PL_curcop, PL_debstash) && !DEBUG_J_TEST_)
@@ -2404,35 +2469,110 @@ Perl_debop(pTHX_ const OP *o)
     case OP_PADSV:
     case OP_PADAV:
     case OP_PADHV:
-        count = 1;
-        goto dump_padop;
-    case OP_PADRANGE:
-        count = o->op_private & OPpPADRANGE_COUNTMASK;
-    dump_padop:
-	/* print the lexical's name */
-        {
-            CV * const cv = deb_curcv(cxstack_ix);
-            SV *sv;
-            PAD * comppad = NULL;
-            int i;
+        S_deb_padvar(aTHX_ o->op_targ, 1, 1);
+        break;
 
-            if (cv) {
-                PADLIST * const padlist = CvPADLIST(cv);
-                comppad = *PadlistARRAY(padlist);
-            }
+    case OP_PADRANGE:
+        S_deb_padvar(aTHX_ o->op_targ,
+                        o->op_private & OPpPADRANGE_COUNTMASK, 1);
+        break;
+
+    case OP_MULTIDEREF:
+#ifdef DEBUGGING
+        {
+            MDEREF_item *items = (MDEREF_item*)(cPVOPo->op_pv);
+            UV actions = items->actions;
+            SV *sv;
+            bool last = 0;
+            bool is_hash = FALSE;
+
             PerlIO_printf(Perl_debug_log, "(");
-            for (i = 0; i < count; i++) {
-                if (comppad &&
-                        (sv = *av_fetch(comppad, o->op_targ + i, FALSE)))
-                    PerlIO_printf(Perl_debug_log, "%s", SvPV_nolen_const(sv));
-                else
-                    PerlIO_printf(Perl_debug_log, "[%"UVuf"]",
-                            (UV)o->op_targ+i);
-                if (i < count-1)
-                    PerlIO_printf(Perl_debug_log, ",");
-            }
+            while (!last) {
+                switch (actions & MDEREF_ACTION_MASK) {
+
+                case MDEREF_reload:
+                    actions = (++items)->actions;
+                    continue;
+
+                case MDEREF_HV_padhv_helem:
+                    is_hash = TRUE;
+                case MDEREF_AV_padav_aelem:
+                    S_deb_padvar(aTHX_ (++items)->pad_offset, 1, 0);
+                    goto do_elem;
+
+                case MDEREF_HV_gvhv_helem:
+                    is_hash = TRUE;
+                case MDEREF_AV_gvav_aelem:
+                    sv = MDEREF_item_sv(++items);
+                    S_print_gv_name(aTHX_ (GV*)sv, (is_hash ? '%' : '@'));
+                    goto do_elem;
+
+                case MDEREF_HV_gvsv_vivify_rv2hv_helem:
+                    is_hash = TRUE;
+                case MDEREF_AV_gvsv_vivify_rv2av_aelem:
+                    sv = MDEREF_item_sv(++items);
+                    S_print_gv_name(aTHX_ (GV*)sv, '$');
+                    goto do_vivify_rv2xv_elem;
+
+                case MDEREF_HV_padsv_vivify_rv2hv_helem:
+                    is_hash = TRUE;
+                case MDEREF_AV_padsv_vivify_rv2av_aelem:
+                    S_deb_padvar(aTHX_ (++items)->pad_offset, 1, 0);
+                    goto do_vivify_rv2xv_elem;
+
+                case MDEREF_HV_pop_rv2hv_helem:
+                case MDEREF_HV_vivify_rv2hv_helem:
+                case MDEREF_HV_rv2hv_helem:
+                    is_hash = TRUE;
+                do_vivify_rv2xv_elem:
+                case MDEREF_AV_pop_rv2av_aelem:
+                case MDEREF_AV_vivify_rv2av_aelem:
+                case MDEREF_AV_rv2av_aelem:
+                    PerlIO_printf(Perl_debug_log, "->");
+                do_elem:
+                    PerlIO_putc(Perl_debug_log, (is_hash ? '{' : '['));
+                    switch (actions & MDEREF_INDEX_MASK) {
+                    case MDEREF_INDEX_none:
+                        last = 1;
+                        break;
+                    case MDEREF_INDEX_const:
+                        if (is_hash) {
+                            sv = MDEREF_item_sv(++items);
+                            PerlIO_puts(Perl_debug_log, SvPEEK(sv));
+                        }
+                        else
+                            PerlIO_printf(Perl_debug_log, "%"IVdf,
+                                            (++items)->iv);
+                        break;
+                    case MDEREF_INDEX_padsv:
+                        S_deb_padvar(aTHX_ (++items)->pad_offset, 1, 0);
+                        break;
+                    case MDEREF_INDEX_gvsv:
+                        sv = MDEREF_item_sv(++items);
+                        S_print_gv_name(aTHX_ (GV*)sv, '$');
+                        break;
+                    }
+                    PerlIO_putc(Perl_debug_log, (is_hash ? '}' : ']'));
+
+                    if (actions & MDEREF_FLAG_last)
+                        last = 1;
+                    is_hash = FALSE;
+
+                    break;
+
+                default:
+                    PerlIO_printf(Perl_debug_log, "UNKNOWN(%d)",
+                        (int)(actions & MDEREF_ACTION_MASK));
+                    last = 1;
+                    break;
+
+                } /* switch */
+
+                actions >>= MDEREF_SHIFT;
+            } /* while */
             PerlIO_printf(Perl_debug_log, ")");
         }
+#endif
         break;
 
     default:

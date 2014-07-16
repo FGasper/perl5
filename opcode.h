@@ -293,6 +293,7 @@ EXTCONST char* const PL_op_name[] = {
 	"helem",
 	"hslice",
 	"kvhslice",
+	"multideref",
 	"unpack",
 	"pack",
 	"split",
@@ -680,6 +681,7 @@ EXTCONST char* const PL_op_desc[] = {
 	"hash element",
 	"hash slice",
 	"key/value hash slice",
+	"aggregate dereference",
 	"unpack",
 	"pack",
 	"split",
@@ -1081,6 +1083,7 @@ EXT Perl_ppaddr_t PL_ppaddr[] /* or perlvars.h */
 	Perl_pp_helem,
 	Perl_pp_hslice,
 	Perl_pp_kvhslice,
+	Perl_pp_multideref,
 	Perl_pp_unpack,
 	Perl_pp_pack,
 	Perl_pp_split,
@@ -1478,6 +1481,7 @@ EXT Perl_check_t PL_check[] /* or perlvars.h */
 	Perl_ck_null,		/* helem */
 	Perl_ck_null,		/* hslice */
 	Perl_ck_null,		/* kvhslice */
+	Perl_ck_null,		/* multideref */
 	Perl_ck_fun,		/* unpack */
 	Perl_ck_fun,		/* pack */
 	Perl_ck_split,		/* split */
@@ -1869,6 +1873,7 @@ EXTCONST U32 PL_opargs[] = {
 	0x00014204,	/* helem */
 	0x00024401,	/* hslice */
 	0x00024401,	/* kvhslice */
+	0x00000804,	/* multideref */
 	0x00091480,	/* unpack */
 	0x0002140f,	/* pack */
 	0x00111408,	/* split */
