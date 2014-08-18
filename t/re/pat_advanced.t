@@ -2458,7 +2458,7 @@ EOP
 
     { # [perl #112530], the code below caused a panic
         sub InFoo { "a\tb\n9\ta\n" }
-        like("\n", qr/\p{InFoo}/,
+        like(chr(0xA), qr/\p{InFoo}/,
                             "Overlapping ranges in user-defined properties");
     }
 

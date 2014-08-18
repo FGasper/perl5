@@ -10,15 +10,11 @@ BEGIN {
 
 use Config;
 
-use Test::More (ord("A" == 65 && $Config{useperlio})
+use Test::More (ord("A") == 65 && $Config{useperlio})
                ? (tests => 1)
                : (skip_all => '(No PerlIO enabled;'
-                            . ' or is EBCDIC platform which doesnt have '
-                            . '"use encoding" used by open ":locale")');
-
-
-if 
-
+                            . ' or is EBCDIC platform which doesnt have'
+                            . ' "use encoding" used by open ":locale")');
 BEGIN {
     $SIG{__WARN__} = sub { $warn .= $_[0] };
 }

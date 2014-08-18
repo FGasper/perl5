@@ -15,6 +15,9 @@ $::NO_ENDING = $::NO_ENDING = 1;
 if ( $^O eq "VMS" ) {
   skip_all( "- regen.pl needs porting." );
 }
+if ( $::IS_EBCIDC) {
+  skip_all( "- We don't regen on EBCDIC." );
+}
 use Config;
 if ( $Config{usecrosscompile} ) {
   skip_all( "Not all files are available during cross-compilation" );
@@ -69,9 +72,6 @@ OUTER: foreach my $file (@files) {
 	    fail("Bad line in $file: '$_'");
 	    next OUTER;
 	}
-
-        # regen_perly is not currently run on EBCDIC platforms
-        next if !$::IS_EBCDIC && ($2 eq 'perly.y' || $2 eq 'regen_perly.pl');
 
 	my $digest = digest($2);
 	note("$digest $2");

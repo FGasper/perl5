@@ -1,4 +1,5 @@
 # Test the /a, /d, etc regex modifiers
+$!=1;
 
 BEGIN {
     chdir 't' if -d 't';
@@ -23,7 +24,7 @@ my %testcases = (
     '[:graph:]' => [ ord("&"), utf8::unicode_to_native(0xF7), 0x02C7 ], # Below expects these to be
                                                                      # [:print:]
     '[:lower:]' => [ ord("g"), utf8::unicode_to_native(0xE3), 0x0127 ],
-    '[:punct:]' => [ ord("!"), utf8::unicode_to_native(0xBF), 0x055C ],
+    '[:punct:]' => [ ord('`'), ord('^'), ord('~'), ord('<'), ord('='), ord('>'), ord('|'), ord('-'), ord(','), ord(';'), ord(':'), ord('!'), ord('?'), ord('/'), ord('.'), ord('"'), ord('('), ord(')'), ord('['), ord(']'), ord('{'), ord('}'), ord('@'), ord('$'), ord('*'), ord('\\'), ord('&'), ord('#'), ord('%'), ord('+'), ord("'"), utf8::unicode_to_native(0xBF), 0x055C ],
     '[:upper:]' => [ ord("G"), utf8::unicode_to_native(0xC3), 0x0126 ],
     '[:xdigit:]' => [ ord("4"), 0xFF15 ],
 );
@@ -97,7 +98,8 @@ foreach my $charset (@charsets) {
 
             # For each test case
             foreach my $ord (@{$testcases{$class}}) {
-                my $char = display(chr($ord));
+                my $char = chr($ord);
+                $char = ($char eq '$') ? '\$' : display($char);
 
                 # > 255 already implies upgraded.  Skip the ones that don't
                 # have an explicit upgrade.  This shows more clearly in the

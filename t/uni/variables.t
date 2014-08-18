@@ -81,13 +81,14 @@ for ( 0x80..0xff ) {
             sprintf("\\x%02x, part of the latin-1 range, is legal as a length-1 variable", $_);
 
       SKIP: {
-        # On EBCDIC platforms, some of the C1 controls map to the range 0..31,
-        # and Perl accepts any length-1 variable in that range no matter the
-        # platform and UTF-8 or not.  Thus the next test would fail, so skip
-        # it.  Note that on ASCII platforms $chr will always be > 127,
-        # hence > 32.  XXX There probably should be an alternate test for
-        # these
-        skip("EBCDIC ords < 32 should pass", 1) if ord $chr < 32;
+        # Perl accepts any length-1 variable that is in the range 0..31 or is
+        # \c? no matter the platform and whether UTF-8 or not.  On EBCDIC
+        # platforms, some of the C1 controls map to the range 0..31, and
+        # something else maps to 127, thus the next test would fail, so skip
+        # it.  Note that on ASCII platforms $chr will always be > 127, hence >
+        # 32.  XXX There probably should be an alternate test for these
+        skip("EBCDIC \\c? and ords < 32 should pass", 1)
+                                            if ord $chr < 32 || ord $chr == 127;
 
         utf8::upgrade($chr);
         local $@;
@@ -253,11 +254,15 @@ EOP
     );
     
     
-    is(
-        "".eval "*{^JOIN}",
-        "*main::\nOIN",
-        "...but \$^J is still legal"
-    );
+    SKIP: {
+        skip('Is $^U on EBCDIC 1047, BC; nothing works on 0037', 1)
+                                                                if $::IS_EBCDIC;
+        is(
+            "".eval "*{^JOIN}",
+            "*main::\nOIN",
+            "...but \$^J is still legal"
+        );
+    }
     
     no warnings 'deprecated';
     my $ret = eval "\${\cT\n}";

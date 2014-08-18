@@ -177,6 +177,7 @@ foreach ("\x7f","\xff")
 {
     local $/; # Slurp.
     my $utf8      = <DATA>;
+    # This doesn't work; don't know why this file is latin1 encoded
     my $utfebcdic = <DATA>;
     diag $utfebcdic;
     if (ord('A') == 65) {

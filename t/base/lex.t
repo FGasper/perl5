@@ -386,7 +386,7 @@ eval "package v10::foo; sub test2 { return 'v10::foo' }
 print "not " unless $output eq 'v10::foo';
 print "ok $test - call a function in package v10::foo\n"; $test++;
 
-print "not " unless (1?v65:"bar") eq 'A';
+print "not " unless (1?v65:"bar") eq chr(65);
 print "ok $test - colon detection after vstring does not break ? vstring :\n"; $test++;
 
 # Test pyoq ops with comments before the first delim

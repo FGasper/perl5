@@ -1561,7 +1561,9 @@ EOP
         like "\x{AA}", qr/a?[\W_]/d, "\\W with /d synthetic start class works";
     }
 
-    {
+    SKIP: {
+        skip("Tests are ASCII-centric, some would fail on EBCDIC", 12) if $::IS_EBCDIC;
+
         # Verify that the very last Latin-1 U+00FF
         # (LATIN SMALL LETTER Y WITH DIAERESIS)
         # and its UPPER counterpart (U+0178 which is pure Unicode),

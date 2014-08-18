@@ -5,6 +5,7 @@ BEGIN {
 	@INC = '../lib';
 	require Config; import Config;
 	require './test.pl';
+	require './charset_tools.pl';
 }
 
 plan 23;
@@ -202,10 +203,14 @@ SKIP: {
             'print STDOUT qq-\x{ff}\n-;',
             'print STDERR qq-\x{ff}\n-;',
          ],
-         stdin => "\xc4\x80\n",
+         stdin => byte_utf8a_to_utf8n("\xc4\x80") . "\n",
          stderr => 1,
        ),
-       "stdin ok\n\xc3\xbf\n\xc3\xbf\n",
+       "stdin ok\n"
+        . byte_utf8a_to_utf8n("\xc3\xbf")
+        . "\n"
+        . byte_utf8a_to_utf8n("\xc3\xbf")
+        . "\n",
        "use open without :std does not affect standard handles",
     ;
 }

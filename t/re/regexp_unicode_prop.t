@@ -157,7 +157,7 @@ while (my ($class, $chars) = each %SHORT_PROPERTIES) {
                                                      ? $_ : "!$_"} @$chars;
 }
 
-delete $d {IsASCII} if $::IS_EBCDIC;
+#delete $d {IsASCII} if $::IS_EBCDIC;   # XXX Don't know why was deleted
 
 push @CLASSES => "# Short properties"        => %SHORT_PROPERTIES,
                  "# POSIX like properties"   => %d,
@@ -313,25 +313,13 @@ sub InNotKana {<<'--'}
 
 sub InConsonant {
 
-if ($::IS_EBCDIC) {
-    my $return = "utf8::Lowercase\n&utf8::ASCII";
+    my $return = "+utf8::Lowercase\n&utf8::ASCII\n";
     $return .= sprintf("-%X\n", ord "a");
     $return .= sprintf("-%X\n", ord "e");
     $return .= sprintf("-%X\n", ord "i");
     $return .= sprintf("-%X\n", ord "o");
     $return .= sprintf("-%X\n", ord "u");
     return $return;
-}
-else {
-    return <<'--'
-0061 007a
--0061
--0065
--0069
--006f
--0075
---
-}
 }
 
 sub IsSyriac1 {<<'--'}
@@ -349,16 +337,11 @@ sub IsAsciiHexAndDash {<<'--'}
 
 sub IsMyUpper {
     my $caseless = shift;
-    if ($caseless) {
-        return ($::IS_EBCDIC)
-               ? "utf8::Alpahbetic\n&utf8::ASCII"
-               : "0041\t005A\n0061\t007A"
-    }
-    else {
-        return ($::IS_EBCDIC)
-               ? "utf8::Uppercase\n&utf8::ASCII"
-               : "0041\t005A"
-    }
+    return "+utf8::"
+           . (($caseless)
+               ? 'Alphabetic'
+               : 'Uppercase')
+           . "\n&utf8::ASCII";
 }
 
 # Verify that can use user-defined properties inside another one
