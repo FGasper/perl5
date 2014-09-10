@@ -8982,10 +8982,6 @@ Perl_ck_rvconst(pTHX_ OP *o)
 
     if (kid->op_type == OP_CONST) {
 	int iscv;
-	const int noexpand = o->op_type == OP_RV2CV
-			  && o->op_private & OPpMAY_RETURN_CONSTANT
-				? GV_NOEXPAND
-				: 0;
 	GV *gv;
 	SV * const kidsv = kid->op_sv;
 
@@ -9025,8 +9021,9 @@ Perl_ck_rvconst(pTHX_ OP *o)
 	 */
 	iscv = (o->op_type == OP_RV2CV) * 2;
 	gv = gv_fetchsv(kidsv,
-		noexpand
-		    ? noexpand
+		o->op_type == OP_RV2CV
+			&& o->op_private & OPpMAY_RETURN_CONSTANT
+		    ? GV_NOEXPAND
 		    : iscv | !(kid->op_private & OPpCONST_ENTERED),
 		iscv
 		    ? SVt_PVCV
